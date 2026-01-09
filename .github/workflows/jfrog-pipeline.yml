@@ -47,7 +47,7 @@ jobs:
         run: |
           # We use the standard 'mvn' command but wrap it with 'jf' to collect build-info
           # We add a property to prevent the specific extractor conflict
-          jf mvn clean deploy -DskipTests=false
+          jf mvn clean deploy -DskipTests=false -e -X
 
       - name: Build and Push Docker Image
         run: |
