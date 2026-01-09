@@ -12,6 +12,7 @@ jobs:
       MAVEN_REPO: "maven-virt"
       DOCKER_REPO: "docker-local"
       SERVER_ID: "jfrog-instance"
+      JFROG_CLI_LOG_LEVEL: "DEBUG"
 
     steps:
       - name: Checkout Code
