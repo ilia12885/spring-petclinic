@@ -4,14 +4,15 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
+  build: # This is the job name
     runs-on: ubuntu-latest
-env:
+    env:
       JF_URL: ${{ secrets.JF_URL }}
       JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
       MAVEN_REPO: "maven-virtual"
-      SERVER_ID: "jfrog-instance" # We define a name for our server connection here
-steps:
+      SERVER_ID: "jfrog-instance"
+
+    steps: # 'steps' must be indented exactly this far
       - name: Checkout Code
         uses: actions/checkout@v4
 
@@ -21,13 +22,7 @@ steps:
           JF_URL: ${{ secrets.JF_URL }}
           JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
 
-      - name: Configure Maven
+      - name: Configure and Build Maven
         run: |
-          # We add the --server-id-resolve and --server-id-deploy flags here
           jf mvn-config --server-id-resolve $SERVER_ID --server-id-deploy $SERVER_ID --repo-resolve-releases $MAVEN_REPO --repo-resolve-snapshots $MAVEN_REPO --repo-deploy-releases maven-local --repo-deploy-snapshots maven-local
-
-      - name: Build and Test
-        run: |
-          # We tell the build command which server ID to use
           jf mvn clean deploy --server-id-res $SERVER_ID --server-id-deploy $SERVER_ID
-
