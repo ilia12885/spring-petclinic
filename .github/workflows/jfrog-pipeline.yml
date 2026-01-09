@@ -4,15 +4,19 @@ on:
     branches: [ main ]
 
 jobs:
-  build: # This is the job name
+  build:
     runs-on: ubuntu-latest
     env:
+      # Secrets must be configured in your GitHub Repo Settings
       JF_URL: ${{ secrets.JF_URL }}
       JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
-      MAVEN_REPO: "maven-virtual"
+      
+      # Repository names as configured in your JFrog UI
+      MAVEN_REPO: "maven-virt"
+      DOCKER_REPO: "docker-local"
       SERVER_ID: "jfrog-instance"
 
-    steps: # 'steps' must be indented exactly this far
+    steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
@@ -22,7 +26,33 @@ jobs:
           JF_URL: ${{ secrets.JF_URL }}
           JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
 
-      - name: Configure and Build Maven
+      - name: Authenticate and Configure Maven
         run: |
-          jf mvn-config --server-id-resolve $SERVER_ID --server-id-deploy $SERVER_ID --repo-resolve-releases $MAVEN_REPO --repo-resolve-snapshots $MAVEN_REPO --repo-deploy-releases maven-local --repo-deploy-snapshots maven-local
+          # Register the server connection with the CLI
+          jf c add $SERVER_ID --url=$JF_URL --access-token=$JF_ACCESS_TOKEN --overwrite
+          
+          # Force Maven to resolve and deploy through Artifactory for security
+          jf mvn-config --server-id-resolve $SERVER_ID --server-id-deploy $SERVER_ID \
+            --repo-resolve-releases $MAVEN_REPO --repo-resolve-snapshots $MAVEN_REPO \
+            --repo-deploy-releases maven-local --repo-deploy-snapshots maven-local
+
+      - name: Build, Test, and Deploy JAR
+        run: |
+          # Captures Build-Info metadata during the Maven lifecycle
           jf mvn clean deploy --server-id-res $SERVER_ID --server-id-deploy $SERVER_ID
+
+      - name: Build and Push Docker Image
+        run: |
+          # 1. Secure Docker Login using the Access Token
+          echo ${{ secrets.JF_ACCESS_TOKEN }} | docker login <your-jfrog-url> -u <your-email> --password-stdin
+          
+          # 2. Build the image (Requirement 3.c)
+          docker build . -t <your-jfrog-url>/$DOCKER_REPO/spring-petclinic:${{ github.run_number }}
+          
+          # 3. Push to Artifactory Docker Registry
+          docker push <your-jfrog-url>/$DOCKER_REPO/spring-petclinic:${{ github.run_number }}
+
+      - name: Publish Build Info
+        run: |
+          # Finalize the 'Software Bill of Materials' for full traceability
+          jf rt build-publish $SERVER_ID ${{ github.run_number }}
