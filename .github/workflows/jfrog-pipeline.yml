@@ -30,29 +30,36 @@ jobs:
           JF_URL: ${{ secrets.JF_URL }}
           JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
 
-      - name: Authenticate JFrog
+      - name: Authenticate and Configure Project
         run: |
+          # 1. Register the server credentials
           jf c add $SERVER_ID --url=$JF_URL --access-token=$JF_ACCESS_TOKEN --overwrite
+          
+          # 2. CREATE THE CONFIG FILE (This fixes the 'no config file found' error)
+          jf mvn-config --server-id-resolve $SERVER_ID \
+                        --server-id-deploy $SERVER_ID \
+                        --repo-resolve-releases $MAVEN_REPO \
+                        --repo-resolve-snapshots $MAVEN_REPO \
+                        --repo-deploy-releases maven-local \
+                        --repo-deploy-snapshots maven-local
 
-      - name: Build and Deploy (Direct Method)
+      - name: Build, Test, and Deploy JAR
         run: |
-          # We bypass the automated 'jf mvn' wrapper to avoid the null pointer error
-          # We use standard mvn but point it to Artifactory via the CLI
-          jf mvn clean deploy -U --server-id-res $SERVER_ID --server-id-deploy $SERVER_ID
+          # Now the config file exists, so 'jf mvn' will work perfectly
+          jf mvn clean deploy -U
 
       - name: Build and Push Docker Image
         run: |
-          # Authenticate Docker (Requirement 25)
           # Replace <your-jfrog-url> with your instance domain (e.g., yourname.jfrog.io)
           echo ${{ secrets.JF_ACCESS_TOKEN }} | docker login <your-jfrog-url> -u <your-email> --password-stdin
           
           # Build and Tag (Requirement 24)
           docker build . -t <your-jfrog-url>/$DOCKER_REPO/spring-petclinic:${{ github.run_number }}
           
-          # Push image
+          # Push to Artifactory
           docker push <your-jfrog-url>/$DOCKER_REPO/spring-petclinic:${{ github.run_number }}
 
       - name: Publish Build Info
         run: |
-          # Capture the full audit trail (Requirement 27, 28)
+          # Finalize the 'Software Bill of Materials' for full traceability (Requirement 6, 28)
           jf rt build-publish $SERVER_ID ${{ github.run_number }}
