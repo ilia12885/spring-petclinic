@@ -7,11 +7,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      # Secrets must be configured in your GitHub Repo Settings
       JF_URL: ${{ secrets.JF_URL }}
       JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
-      
-      # Repository names as configured in your JFrog UI
+      # Ensure these match your actual repository names in JFrog
       MAVEN_REPO: "maven-virt"
       DOCKER_REPO: "docker-local"
       SERVER_ID: "jfrog-instance"
@@ -20,49 +18,50 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup JFrog CLI
-        uses: jfrog/setup-jfrog-cli@v4
-        env:
-          JF_URL: ${{ secrets.JF_URL }}
-          JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
-          
-      - name: Set up Maven
-        uses: stefanzweifel/setup-maven@v1
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
         with:
-          maven-version: 3.8.8
+          java-version: '17'
+          distribution: 'temurin'
+          # This ensures a stable Maven version is used
+          cache: 'maven'
 
       - name: Setup JFrog CLI
         uses: jfrog/setup-jfrog-cli@v4
         env:
           JF_URL: ${{ secrets.JF_URL }}
           JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
+
       - name: Authenticate and Configure Maven
         run: |
-          # Register the server connection with the CLI
           jf c add $SERVER_ID --url=$JF_URL --access-token=$JF_ACCESS_TOKEN --overwrite
-          
-          # Force Maven to resolve and deploy through Artifactory for security
           jf mvn-config --server-id-resolve $SERVER_ID --server-id-deploy $SERVER_ID \
             --repo-resolve-releases $MAVEN_REPO --repo-resolve-snapshots $MAVEN_REPO \
             --repo-deploy-releases maven-local --repo-deploy-snapshots maven-local
 
       - name: Build, Test, and Deploy JAR
         run: |
-          # Captures Build-Info metadata during the Maven lifecycle
-          jf mvn clean deploy
+          # Captures build metadata while compiling and testing (Requirement 21, 22, 23)
+          jf mvn clean deploy -U
 
       - name: Build and Push Docker Image
         run: |
-          # 1. Secure Docker Login using the Access Token
+          # 1. Login to JFrog Docker Registry (Requirement 25)
+          # Replace <your-jfrog-url> with your instance name, e.g., myjfrog.jfrog.io
           echo ${{ secrets.JF_ACCESS_TOKEN }} | docker login <your-jfrog-url> -u <your-email> --password-stdin
           
-          # 2. Build the image (Requirement 3.c)
+          # 2. Build and Tag (Requirement 24)
           docker build . -t <your-jfrog-url>/$DOCKER_REPO/spring-petclinic:${{ github.run_number }}
           
-          # 3. Push to Artifactory Docker Registry
+          # 3. Push to Artifactory
           docker push <your-jfrog-url>/$DOCKER_REPO/spring-petclinic:${{ github.run_number }}
+
+      - name: Scan Docker Image (Bonus)
+        run: |
+          # Triggers JFrog Xray to scan the image for vulnerabilities (Requirement 35)
+          jf docker scan <your-jfrog-url>/$DOCKER_REPO/spring-petclinic:${{ github.run_number }}
 
       - name: Publish Build Info
         run: |
-          # Finalize the 'Software Bill of Materials' for full traceability
+          # Finalizes traceability and auditability (Requirement 27, 28)
           jf rt build-publish $SERVER_ID ${{ github.run_number }}
