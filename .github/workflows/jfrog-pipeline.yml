@@ -39,7 +39,7 @@ jobs:
       - name: Build, Test, and Deploy JAR
         run: |
           # Captures Build-Info metadata during the Maven lifecycle
-          jf mvn clean deploy --server-id-res $SERVER_ID --server-id-deploy $SERVER_ID
+          jf mvn clean deploy
 
       - name: Build and Push Docker Image
         run: |
