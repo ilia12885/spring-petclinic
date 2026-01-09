@@ -17,8 +17,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # This step fixes the "prerequisitesCheckers is null" error by using a stable Maven version
-      - name: Set up JDK 17 and Maven
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
@@ -31,30 +30,29 @@ jobs:
           JF_URL: ${{ secrets.JF_URL }}
           JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
 
-      - name: Authenticate and Configure Maven
+      - name: Authenticate JFrog
         run: |
           jf c add $SERVER_ID --url=$JF_URL --access-token=$JF_ACCESS_TOKEN --overwrite
-          jf mvn-config --server-id-resolve $SERVER_ID --server-id-deploy $SERVER_ID \
-            --repo-resolve-releases $MAVEN_REPO --repo-resolve-snapshots $MAVEN_REPO \
-            --repo-deploy-releases maven-local --repo-deploy-snapshots maven-local
 
-      - name: Build, Test, and Deploy JAR
+      - name: Build and Deploy (Direct Method)
         run: |
-          # This compiles the code and uploads the JAR to Artifactory (Requirement 22, 23)
-          jf mvn clean deploy -U
+          # We bypass the automated 'jf mvn' wrapper to avoid the null pointer error
+          # We use standard mvn but point it to Artifactory via the CLI
+          jf mvn clean deploy -U --server-id-res $SERVER_ID --server-id-deploy $SERVER_ID
 
       - name: Build and Push Docker Image
         run: |
-          # Replace <your-jfrog-url> with your instance domain (e.g., acme.jfrog.io)
+          # Authenticate Docker (Requirement 25)
+          # Replace <your-jfrog-url> with your instance domain (e.g., yourname.jfrog.io)
           echo ${{ secrets.JF_ACCESS_TOKEN }} | docker login <your-jfrog-url> -u <your-email> --password-stdin
           
-          # Build and Tag the image (Requirement 24)
+          # Build and Tag (Requirement 24)
           docker build . -t <your-jfrog-url>/$DOCKER_REPO/spring-petclinic:${{ github.run_number }}
           
-          # Push the image to the secure registry
+          # Push image
           docker push <your-jfrog-url>/$DOCKER_REPO/spring-petclinic:${{ github.run_number }}
 
       - name: Publish Build Info
         run: |
-          # This provides the traceability and auditability requested (Requirement 27, 28)
+          # Capture the full audit trail (Requirement 27, 28)
           jf rt build-publish $SERVER_ID ${{ github.run_number }}
