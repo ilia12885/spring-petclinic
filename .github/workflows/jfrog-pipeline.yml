@@ -1,0 +1,34 @@
+name: JFrog DevSecOps Pipeline
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      # These use the secrets you just created
+      JF_URL: ${{ vars.JF_URL }}
+      JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
+      # We define our repo names here for easy management
+      MAVEN_REPO: "maven-virtual" 
+      
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup JFrog CLI
+        uses: jfrog/setup-jfrog-cli@v4
+        env:
+          JF_URL: ${{ vars.JF_URL }}
+          JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
+
+      - name: Configure Maven
+        run: |
+          # This tells the CLI which repositories to use for resolving and deploying
+          jf mvn-config --repo-resolve-releases $MAVEN_REPO --repo-resolve-snapshots $MAVEN_REPO --repo-deploy-releases maven-local --repo-deploy-snapshots maven-local
+
+      - name: Build and Test
+        run: |
+          # This runs 'mvn clean install' but through the JFrog CLI to capture Build Info
+          jf mvn clean install
