@@ -1,4 +1,4 @@
-plname: JFrog DevSecOps Pipeline
+name: JFrog DevSecOps Pipeline
 on:
   push:
     branches: [ main ]
