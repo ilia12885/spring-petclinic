@@ -9,7 +9,7 @@ jobs:
 env:
       JF_URL: ${{ secrets.JF_URL }}
       JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
-      MAVEN_REPO: "maven-virt"
+      MAVEN_REPO: "maven-virtual"
       SERVER_ID: "jfrog-instance" # We define a name for our server connection here
 steps:
       - name: Checkout Code
