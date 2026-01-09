@@ -1,4 +1,4 @@
-name: JFrog DevSecOps Pipeline
+plname: JFrog DevSecOps Pipeline
 on:
   push:
     branches: [ main ]
@@ -29,5 +29,5 @@ steps:
       - name: Build and Test
         run: |
           # We tell the build command which server ID to use
-          jf mvn clean install --server-id-res $SERVER_ID --server-id-deploy $SERVER_ID
+          jf mvn clean deploy --server-id-res $SERVER_ID --server-id-deploy $SERVER_ID
 
