@@ -25,7 +25,17 @@ jobs:
         env:
           JF_URL: ${{ secrets.JF_URL }}
           JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
+          
+      - name: Set up Maven
+        uses: stefanzweifel/setup-maven@v1
+        with:
+          maven-version: 3.8.8
 
+      - name: Setup JFrog CLI
+        uses: jfrog/setup-jfrog-cli@v4
+        env:
+          JF_URL: ${{ secrets.JF_URL }}
+          JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
       - name: Authenticate and Configure Maven
         run: |
           # Register the server connection with the CLI
